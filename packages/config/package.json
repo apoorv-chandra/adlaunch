@@ -1,0 +1,11 @@
+{
+  "name": "@adlaunch/config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "eslint",
+    "prettier",
+    "tsconfig"
+  ]
+}
