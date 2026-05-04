@@ -6,53 +6,82 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { prettyJSON } from 'hono/pretty-json'
-import { authMiddleware } from './middleware/auth'
-import { tenantMiddleware } from './middleware/tenant'
-import { rateLimitMiddleware } from './middleware/ratelimit'
-import { campaignsRouter } from './routes/campaigns'
-import { usersRouter } from './routes/users'
-import { analyticsRouter } from './routes/analytics'
+import { secureHeaders } from 'hono/secure-headers'
+import { timing } from 'hono/timing'
 import type { WorkerEnv } from '@adlaunch/types'
+
+import campaignsRouter from './routes/campaigns'
+import usersRouter from './routes/users'
+import analyticsRouter from './routes/analytics'
+import metaRouter from './routes/meta'
+import adSetsRouter from './routes/ad-sets'
+import adsRouter from './routes/ads'
 
 const app = new Hono<{ Bindings: WorkerEnv }>()
 
-// Global middleware
+// ── Global Middleware ─────────────────────────────────────────────────────────
+
+app.use('*', timing())
 app.use('*', logger())
 app.use('*', prettyJSON())
-app.use('*', cors({
-  origin: ['https://app.adlaunch.io', 'http://localhost:3000'],
-  allowHeaders: ['Content-Type', 'Authorization', 'x-org-id'],
-  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  exposeHeaders: ['Content-Length'],
-  maxAge: 600,
-  credentials: true,
-}))
+app.use('*', secureHeaders())
 
-// Health check
-app.get('/', (c) => c.json({
-  ok: true,
-  message: 'AdLaunch API v1',
-  timestamp: new Date().toISOString(),
-}))
+app.use(
+  '*',
+  cors({
+    origin: (origin) => {
+      const allowed = [
+        'https://app.adlaunch.io',
+        'https://staging.adlaunch.io',
+        'http://localhost:3000',
+      ]
+      return allowed.includes(origin ?? '') ? origin : 'https://app.adlaunch.io'
+    },
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    exposeHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+    credentials: true,
+    maxAge: 86400,
+  })
+)
 
-app.get('/health', (c) => c.json({ status: 'ok' }))
+// ── Health Check ──────────────────────────────────────────────────────────────
 
-// API v1 routes
-const v1 = app.basePath('/v1')
+app.get('/health', (c) => {
+  return c.json({
+    status: 'ok',
+    version: '0.2.0',
+    timestamp: new Date().toISOString(),
+    region: (c.req.raw as Request & { cf?: { colo?: string } }).cf?.colo ?? 'unknown',
+  })
+})
 
-v1.use('*', authMiddleware)
-v1.use('*', tenantMiddleware)
-v1.use('*', rateLimitMiddleware)
+// ── API Routes v1 ─────────────────────────────────────────────────────────────
 
-v1.route('/campaigns', campaignsRouter)
-v1.route('/users', usersRouter)
-v1.route('/analytics', analyticsRouter)
+app.route('/api/v1/users', usersRouter)
+app.route('/api/v1/campaigns', campaignsRouter)
+app.route('/api/v1/analytics', analyticsRouter)
+app.route('/api/v1/meta', metaRouter)
+app.route('/api/v1/ad-sets', adSetsRouter)
+app.route('/api/v1/ads', adsRouter)
 
-// 304 handler
-app.notFound((c) => c.json({ error: 'Not Found', code: 'NOT_FOUND', status: 404 }, 404))
+// ── 404 Handler ───────────────────────────────────────────────────────────────
+
+app.notFound((c) => {
+  return c.json(
+    { error: 'Not found', code: 'NOT_FOUND', status: 404, path: c.req.path },
+    404
+  )
+})
+
+// ── Error Handler ─────────────────────────────────────────────────────────────
+
 app.onError((err, c) => {
-  console.error('Unhandled error:', err)
-  return c.json({ error: 'Internal Server Error', code: 'INTERNAL_ERROR', status: 500 }, 500)
+  console.error(`[API Error] ${err.message}`, err.stack)
+  return c.json(
+    { error: 'Internal server error', code: 'INTERNAL_ERROR', status: 500 },
+    500
+  )
 })
 
 export default app
