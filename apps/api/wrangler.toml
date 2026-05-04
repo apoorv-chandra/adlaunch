@@ -1,0 +1,42 @@
+name = "adlaunch-api"
+main = "src/index.ts"
+compatibility_date = "2024-06-20"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+META_API_VERSION = "v18.0"
+APP_URL = "https://app.adlaunch.io"
+
+# D1 Database (edge SQLite for read-heavy data)
+[[d1_databases]]
+binding = "DB"
+database_name = "adlaunch-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# KV Namespace (caching)
+[[kv_namespaces]]
+binding = "CACHE"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# R2 Bucket (media storage)
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "adlaunch-media"
+
+# Queue (background jobs)
+[[queues.producers]]
+binding = "EMAIL_QUEUE"
+queue = "adlaunch-email-queue"
+
+[[queues.consumers]]
+queue = "adlaunch-email-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+
+[env.production]
+name = "adlaunch-api-production"
+vars = { APP_URL = "https://app.adlaunch.io" }
+
+[env.staging]
+name = "adlaunch-api-staging"
+vars = { APP_URL = "https://staging.adlaunch.io" }
