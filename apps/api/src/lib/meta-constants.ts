@@ -7,7 +7,6 @@ export const META_API_VERSION = 'v18.0'
 export const META_GRAPH_BASE = `https://graph.facebook.com/${META_API_VERSION}`
 export const META_OAUTH_BASE = 'https://www.facebook.com'
 
-// ── Required OAuth Scopes ────────────────────────────────────────────────────
 export const META_SCOPES = [
   'ads_management',
   'ads_read',
@@ -18,8 +17,6 @@ export const META_SCOPES = [
   'email',
 ].join(',')
 
-// ── Objective Mapping ─────────────────────────────────────────────────────────
-// Our internal objectives → Meta v18+ OUTCOME_ objectives
 export const OBJECTIVE_TO_META: Record<string, string> = {
   BRAND_AWARENESS: 'OUTCOME_AWARENESS',
   REACH: 'OUTCOME_AWARENESS',
@@ -39,7 +36,6 @@ export const META_TO_OBJECTIVE: Record<string, string> = {
   OUTCOME_SALES: 'SALES',
 }
 
-// ── Optimization Goals per Objective ────────────────────────────────────────
 export const OBJECTIVE_OPTIMIZATION_GOALS: Record<string, string> = {
   OUTCOME_AWARENESS: 'REACH',
   OUTCOME_TRAFFIC: 'LINK_CLICKS',
@@ -49,7 +45,6 @@ export const OBJECTIVE_OPTIMIZATION_GOALS: Record<string, string> = {
   OUTCOME_SALES: 'OFFSITE_CONVERSIONS',
 }
 
-// ── Billing Events per Optimization Goal ────────────────────────────────────
 export const OPTIMIZATION_BILLING_EVENTS: Record<string, string> = {
   REACH: 'IMPRESSIONS',
   LINK_CLICKS: 'LINK_CLICKS',
@@ -59,7 +54,6 @@ export const OPTIMIZATION_BILLING_EVENTS: Record<string, string> = {
   OFFSITE_CONVERSIONS: 'IMPRESSIONS',
 }
 
-// ── CTA Mapping ──────────────────────────────────────────────────────────────
 export const CTA_TO_META: Record<string, string> = {
   SHOP_NOW: 'SHOP_NOW',
   LEARN_MORE: 'LEARN_MORE',
@@ -71,7 +65,6 @@ export const CTA_TO_META: Record<string, string> = {
   SUBSCRIBE: 'SUBSCRIBE',
 }
 
-// ── Campaign Status Mapping ──────────────────────────────────────────────────
 export const STATUS_TO_META: Record<string, string> = {
   draft: 'PAUSED',
   active: 'ACTIVE',
@@ -89,18 +82,14 @@ export const META_STATUS_TO_INTERNAL: Record<string, string> = {
   WITH_ISSUES: 'rejected',
 }
 
-// ── Gender Mapping ───────────────────────────────────────────────────────────
-// Meta: 1 = male, 2 = female — [] or [1,2] = all
 export const GENDER_TO_META: Record<string, number[]> = {
   all: [],
   male: [1],
   female: [2],
 }
 
-// ── Minimum Daily Budget (cents) ─────────────────────────────────────────────
-export const META_MIN_DAILY_BUDGET_CENTS = 100  // $1.00 minimum
+export const META_MIN_DAILY_BUDGET_CENTS = 100
 
-// ── Ad Format → Meta placement ───────────────────────────────────────────────
 export const FORMAT_PLACEMENTS: Record<string, object> = {
   feed_1x1: {
     publisher_platforms: ['facebook', 'instagram'],
@@ -123,7 +112,6 @@ export const FORMAT_PLACEMENTS: Record<string, object> = {
   },
 }
 
-// ── Meta Error Codes ─────────────────────────────────────────────────────────
 export const META_ERROR_CODES = {
   RATE_LIMIT: 17,
   PERMISSION_DENIED: 200,
