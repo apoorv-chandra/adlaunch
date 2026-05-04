@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// AdLaunch API — Hono.js on Cloudflare Workers
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
@@ -18,8 +14,6 @@ import adSetsRouter from './routes/ad-sets'
 import adsRouter from './routes/ads'
 
 const app = new Hono<{ Bindings: WorkerEnv }>()
-
-// ── Global Middleware ─────────────────────────────────────────────────────────
 
 app.use('*', timing())
 app.use('*', logger())
@@ -45,8 +39,6 @@ app.use(
   })
 )
 
-// ── Health Check ──────────────────────────────────────────────────────────────
-
 app.get('/health', (c) => {
   return c.json({
     status: 'ok',
@@ -56,8 +48,6 @@ app.get('/health', (c) => {
   })
 })
 
-// ── API Routes v1 ─────────────────────────────────────────────────────────────
-
 app.route('/api/v1/users', usersRouter)
 app.route('/api/v1/campaigns', campaignsRouter)
 app.route('/api/v1/analytics', analyticsRouter)
@@ -65,16 +55,12 @@ app.route('/api/v1/meta', metaRouter)
 app.route('/api/v1/ad-sets', adSetsRouter)
 app.route('/api/v1/ads', adsRouter)
 
-// ── 404 Handler ───────────────────────────────────────────────────────────────
-
 app.notFound((c) => {
   return c.json(
     { error: 'Not found', code: 'NOT_FOUND', status: 404, path: c.req.path },
     404
   )
 })
-
-// ── Error Handler ─────────────────────────────────────────────────────────────
 
 app.onError((err, c) => {
   console.error(`[API Error] ${err.message}`, err.stack)
