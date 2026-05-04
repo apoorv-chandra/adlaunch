@@ -1,73 +1,57 @@
+// ─────────────────────
+// AdLaunch API -- Hono on Node
+// ─────────────────────
+
+import { serve } from '@honojs/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { prettyJSON } from 'hono/pretty-json'
-import { secureHeaders } from 'hono/secure-headers'
-import { timing } from 'hono/timing'
-import type { WorkerEnv } from '@adlaunch/types'
 
-import campaignsRouter from './routes/campaigns'
-import usersRouter from './routes/users'
-import analyticsRouter from './routes/analytics'
-import metaRouter from './routes/meta'
-import adSetsRouter from './routes/ad-sets'
-import adsRouter from './routes/ads'
+import { authMiddleware } from './middleware/auth'
+import { rateLimitMiddleware } from './middleware/ratelimit'
+import { tenantMiddleware } from './middleware/tenant'
+import { analyticsRouter} from './routes/analytics'
+import { usersRouter } from './routes/users'
 
-const app = new Hono<{ Bindings: WorkerEnv }>()
+const app = new Hono()
 
-app.use('*', timing())
+// ------------------------------------------------------------------
+// Global middleware
+// ------------------------------------------------------------------
 app.use('*', logger())
 app.use('*', prettyJSON())
-app.use('*', secureHeaders())
-
 app.use(
   '*',
   cors({
-    origin: (origin) => {
-      const allowed = [
-        'https://app.adlaunch.io',
-        'https://staging.adlaunch.io',
-        'http://localhost:3000',
-      ]
-      return allowed.includes(origin ?? '') ? origin : 'https://app.adlaunch.io'
-    },
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
-    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    exposeHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+    origin: [process.env.WEB_URL ?? 'http://localhost:3000'],
+    allowHeaders: ['Authorization', 'Content-Type', 'X-Tenant-ID'],
     credentials: true,
-    maxAge: 86400,
   })
 )
 
-app.get('/health', (c) => {
-  return c.json({
-    status: 'ok',
-    version: '0.2.0',
-    timestamp: new Date().toISOString(),
-    region: (c.req.raw as Request & { cf?: { colo?: string } }).cf?.colo ?? 'unknown',
-  })
-})
+// ------------------------------------------------------------------
+// Health
+// ------------------------------------------------------------------
+app.get('/healthz', (c) => c.json({ status: 'ok', ts: Date.now() }))
 
-app.route('/api/v1/users', usersRouter)
-app.route('/api/v1/campaigns', campaignsRouter)
-app.route('/api/v1/analytics', analyticsRouter)
-app.route('/api/v1/meta', metaRouter)
-app.route('/api/v1/ad-sets', adSetsRouter)
-app.route('/api/v1/ads', adsRouter)
+// ------------------------------------------------------------------
+// Authenticated routes
+// ------------------------------------------------------------------
+const api = new Hono()
+api.use('*', authMiddleware)
+api.use('*', rateLimitMiddleware)
+api.use('*', tenantMiddleware)
 
-app.notFound((c) => {
-  return c.json(
-    { error: 'Not found', code: 'NOT_FOUND', status: 404, path: c.req.path },
-    404
-  )
-})
+api.route('/users', usersRouter)
+api.route('/analytics', analyticsRouter)
 
-app.onError((err, c) => {
-  console.error(`[API Error] ${err.message}`, err.stack)
-  return c.json(
-    { error: 'Internal server error', code: 'INTERNAL_ERROR', status: 500 },
-    500
-  )
-})
+app.route('/api/v1', api)
 
-export default app
+// ------------------------------------------------------------------
+// Start
+// ------------------------------------------------------------------
+const PORT = Number(process.env.PORT) || 8787
+console.log(`🚀 AdLaunch API listening on http://localhost:${PORT}`)
+
+export default serve({ fetch: app.fetch, port: PORT })
